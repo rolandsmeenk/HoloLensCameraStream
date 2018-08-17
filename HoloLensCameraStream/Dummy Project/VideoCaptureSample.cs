@@ -31,6 +31,11 @@ namespace HoloLensCameraStream
             throw new NotImplementedException();
         }
 
+        public bool TryGetCameraIntrinsics(out CameraIntrinsics intrinsics)
+        {
+            throw new NotImplementedException();
+        }
+
         public bool TryGetProjectionMatrix(out float[] outMatrix)
         {
             throw new NotImplementedException();

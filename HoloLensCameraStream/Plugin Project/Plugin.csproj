@@ -107,6 +107,7 @@
     <None Include="project.json" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CameraIntrinsics.cs" />
     <Compile Include="CapturePixelFormat.cs" />
     <Compile Include="CameraParameters.cs" />
     <Compile Include="ResultType.cs" />

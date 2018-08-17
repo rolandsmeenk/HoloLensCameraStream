@@ -13,6 +13,26 @@ using Windows.Perception.Spatial;
 using Windows.Graphics.Imaging;
 using Windows.Media.Capture.Frames;
 
+
+/* Available GUIDS from the acquired frame (refer https://www.magnumdb.com)
+ * ?                                                    {C9BA19A9-0F8A-432F-AEDE-BA44D7F38AB7}:System.Byte[]
+ * MFSampleExtension_Interlaced                         {B1D5830A-DEB8-40E3-90FA-389943716461}:1
+ * MFSampleExtension_BottomFieldFirst                   {941CE0A3-6AE3-4DDA-9A08-A64298340617}:1
+ * ?                                                    {1D120EF0-CFC4-4E49-B64C-DDC371776022}:System.Byte[]
+ * MFSampleExtension_Spatial_CameraCoordinateSystem     {9D13C82F-2199-4E67-91CD-D1A4181F2534}:Windows.Perception.Spatial.SpatialCoordinateSystem
+ * ?                                                    {0B404D45-3042-4F52-9BA5-B1DAB2D02508}:25586972113
+ * MFSampleExtension_CameraExtrinsics                   {6B761658-B7EC-4C3B-8225-8623CABEC31D}:System.Byte[]
+ * MFSampleExtension_CleanPoint                         {9CDF01D8-A0F0-43BA-B077-EAA06CBD728A}:1
+ * MFSampleExtension_DeviceReferenceSystemTime          {6523775A-BA2D-405F-B2C5-01FF88E2E8F6}:251941698121
+ * MFSampleExtension_Spatial_CameraViewTransform        {4E251FA4-830F-4770-859A-4B8D99AA809B}:System.Byte[]
+ * MFSampleExtension_PinholeCameraIntrinsics            {4EE3B6C5-6A15-4E72-9761-70C1DB8B9FE3}:System.Byte[]
+ * MFSampleExtension_Spatial_CameraProjectionTransform  {47F9FCB5-2A02-4F26-A477-792FDF95886A}:System.Byte[]
+ * ?                                                    {66A3D7D5-F91B-42BB-AE55-B4DB6F98FCD6}:System.Byte[]
+ * ?                                                    {137E6B95-4CAD-4CB9-9B7F-65CEF2068A41}:0
+ * ?                                                    {C4139297-2CEC-47C6-9CDF-6DB62EE6DF72}:2
+ * ?                                                    {429F001F-BC30-4BAC-AF7F-91C024D1D974}:System.Byte[]
+ */
+
 namespace HoloLensCameraStream
 {
     public class VideoCaptureSample
@@ -34,6 +54,11 @@ namespace HoloLensCameraStream
         /// See https://developer.microsoft.com/en-us/windows/mixed-reality/locatable_camera#locating_the_device_camera_in_the_world
         /// </summary>
         static Guid cameraCoordinateSystemGuid = new Guid("9D13C82F-2199-4E67-91CD-D1A4181F2534");
+
+        /// <summary>
+        /// See https://developer.microsoft.com/en-us/windows/mixed-reality/locatable_camera#locating_the_device_camera_in_the_world
+        /// </summary>
+        static Guid cameraIntrinsicsGuid = new Guid("4EE3B6C5-6A15-4E72-9761-70C1DB8B9FE3");
 
         /// <summary>
         /// How many bytes are in the frame.
@@ -145,7 +170,7 @@ namespace HoloLensCameraStream
                 outMatrix = GetIdentityMatrixFloatArray();
                 return false;
             }
-            
+
             Matrix4x4 cameraViewTransform = ConvertByteArrayToMatrix4x4(frameReference.Properties[viewTransformGuid] as byte[]);
             if (cameraViewTransform == null)
             {
@@ -187,6 +212,23 @@ namespace HoloLensCameraStream
         }
 
         /// <summary>
+        /// This returns the camera intrinsics at the time the photo was captured, if available.
+        /// If it's not, that is probably an indication that the VideoCapture stream is not running.
+        /// </summary>
+        /// <param name="intrinsics"> The intrinsics of the camera that produced the photo.</param>
+        public bool TryGetCameraIntrinsics(out CameraIntrinsics intrinsics)
+        {
+            if (frameReference.Properties.ContainsKey(cameraIntrinsicsGuid) == false)
+            {
+                intrinsics = new CameraIntrinsics();
+                return false;
+            }
+
+            byte[] rawIntrinsics = frameReference.Properties[cameraIntrinsicsGuid] as byte[];
+            intrinsics = ConvertByteArrayToCameraIntrinsics(rawIntrinsics);
+        }
+
+        /// <summary>
         /// This returns the projection matrix at the time the photo was captured, if location data if available.
         /// If it's not, that is probably an indication that the HoloLens is not tracking and its location is not known.
         /// It could also mean the VideoCapture stream is not running.
@@ -204,7 +246,7 @@ namespace HoloLensCameraStream
             }
 
             Matrix4x4 projectionMatrix = ConvertByteArrayToMatrix4x4(frameReference.Properties[projectionTransformGuid] as byte[]);
-            
+
             // Transpose matrix to match expected Unity format
             projectionMatrix = Matrix4x4.Transpose(projectionMatrix);
             outMatrix = ConvertMatrixToFloatArray(projectionMatrix);
@@ -237,6 +279,43 @@ namespace HoloLensCameraStream
                 matrix.M21, matrix.M22, matrix.M23, matrix.M24,
                 matrix.M31, matrix.M32, matrix.M33, matrix.M34,
                 matrix.M41, matrix.M42, matrix.M43, matrix.M44 };
+        }
+
+        private float[] ConvertByteArrayToFloatArray(byte[] values)
+        {
+            if (values.Length < 4 || values.Length%4 != 0)
+            {
+                throw new ArgumentException("Expected byte array to at least 4 bytes and divisible by 4. Array was " + values.Length + " bytes");
+            }
+
+            float[] outputArr = new float[values.Length / 4];
+            for (int i=0;i<outputArr.Length;i++)
+            {
+                outputArr[i] = BitConverter.ToSingle(values, i * 4);
+            }
+            return outputArr;
+        }
+
+        public CameraIntrinsics ConvertByteArrayToCameraIntrinsics(byte[] array)
+        {
+            if (array.Length < 48)
+            {
+                throw new System.ArgumentException("Expected 12 values in camera intrinsic array, got "+array.Length);
+            }
+
+            var intrinsics = new CameraIntrinsics();
+            intrinsics.Width = BitConverter.ToInt32(array, 4);
+            intrinsics.Height = BitConverter.ToInt32(array, 8);
+            intrinsics.Fx = BitConverter.Single(array, 12);
+            intrinsics.Fy = BitConverter.Single(array, 16);
+            intrinsics.Cx = BitConverter.Single(array, 20);
+            intrinsics.Cy = BitConverter.Single(array, 24);
+            intrinsics.K1 = BitConverter.Single(array, 28);
+            intrinsics.K2 = BitConverter.Single(array, 32);
+            intrinsics.K3 = BitConverter.Single(array, 36);
+            intrinsics.P1 = BitConverter.Single(array, 40);
+            intrinsics.P2 = BitConverter.Single(array, 44);
+            return intrinsics;
         }
 
         private Matrix4x4 ConvertByteArrayToMatrix4x4(byte[] matrixAsBytes)
