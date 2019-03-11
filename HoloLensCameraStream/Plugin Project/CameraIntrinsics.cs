@@ -13,7 +13,7 @@
         public double TangentialDistP2;     //tangential distortion coefficient p2.
         public double RadialDistK3;         //radial distortion coefficient k3.
 
-        /* When Windows.Media.Devices.Core.CameraIntrinsics is out of pre-release
+        // When Windows.Media.Devices.Core.CameraIntrinsics is out of pre-release
         public CameraIntrinsics(Windows.Media.Devices.Core.CameraIntrinsics intrinsics)
         {
             FocalLengthX = intrinsics.FocalLength.X;
@@ -26,7 +26,7 @@
             TangentialDistP1 = intrinsics.TangentialDistortion.X;
             TangentialDistP2 = intrinsics.TangentialDistortion.Y;
         }
-        */
+        
 
         public CameraIntrinsics(float[] intrinsics)
         {

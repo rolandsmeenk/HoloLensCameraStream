@@ -333,7 +333,8 @@ namespace HoloLensCameraStream
                 {
                     if (frameReference != null)
                     {
-                        onFrameSampleAcquired.Invoke(new VideoCaptureSample(frameReference, worldOrigin));
+                        var focus = new CameraFocus(_mediaCapture.VideoDeviceController.FocusControl);
+                        onFrameSampleAcquired.Invoke(new VideoCaptureSample(frameReference, worldOrigin, focus));
                     }
                     else
                     {
@@ -398,6 +399,7 @@ namespace HoloLensCameraStream
                 
             });
 
+            //https://docs.microsoft.com/en-us/uwp/api/windows.media.devices.focuscontrol
             _mediaCapture.VideoDeviceController.Focus.TrySetAuto(true);
         }
 
@@ -415,9 +417,7 @@ namespace HoloLensCameraStream
             }
 
             return frameSource.SetFormatAsync(preferredFormat.First()).AsTask();
-
         }
-
 
         void HandleFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
         {
@@ -430,9 +430,10 @@ namespace HoloLensCameraStream
             {
                 if (frameReference != null)
                 {
-                    var sample = new VideoCaptureSample(frameReference, worldOrigin);
+                    var focus = new CameraFocus(_mediaCapture.VideoDeviceController.FocusControl);
+                    var sample = new VideoCaptureSample(frameReference, worldOrigin, focus);
                     FrameSampleAcquired?.Invoke(sample);
-                }
+                } 
             }
         }
 

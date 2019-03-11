@@ -97,6 +97,11 @@ namespace HoloLensCameraStream
         /// </summary>
         public CameraIntrinsics cameraIntrinsics { get; private set; }
 
+        /// <summary>
+        /// The focus of the camera at the time the event was raised
+        /// </summary>
+        public CameraFocus cameraFocus { get; private set; }
+
         public int FrameWidth { get; private set; }
         public int FrameHeight { get; private set; }
 
@@ -112,7 +117,7 @@ namespace HoloLensCameraStream
 
         MediaFrameReference frameReference;
 
-        internal VideoCaptureSample(MediaFrameReference frameReference, SpatialCoordinateSystem worldOrigin)
+        internal VideoCaptureSample(MediaFrameReference frameReference, SpatialCoordinateSystem worldOrigin, CameraFocus focus)
         {
             if (frameReference == null)
             {
@@ -127,7 +132,9 @@ namespace HoloLensCameraStream
 
             byte[] rawIntrinsics = frameReference.Properties[cameraIntrinsicsGuid] as byte[];
             float[] intrinsicArray = ConvertByteArrayToFloatArray(rawIntrinsics);
-            cameraIntrinsics = new CameraIntrinsics(intrinsicArray);
+            cameraIntrinsics = new CameraIntrinsics(frameReference.VideoMediaFrame.CameraIntrinsics);
+            focus = cameraFocus;
+                        
 
             bitmap = frameReference.VideoMediaFrame.SoftwareBitmap;
             FrameWidth = bitmap.PixelWidth;
