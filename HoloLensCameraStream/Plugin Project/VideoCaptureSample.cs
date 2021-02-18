@@ -5,13 +5,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 
 using Windows.Perception.Spatial;
 using Windows.Graphics.Imaging;
 using Windows.Media.Capture.Frames;
+
+using System.Runtime.InteropServices;
 
 
 /* Available GUIDS from the acquired frame (refer https://www.magnumdb.com)
@@ -32,6 +33,14 @@ using Windows.Media.Capture.Frames;
  * ?                                                    {C4139297-2CEC-47C6-9CDF-6DB62EE6DF72}:2
  * ?                                                    {429F001F-BC30-4BAC-AF7F-91C024D1D974}:System.Byte[]
  */
+
+[ComImport]
+[Guid("5b0d3235-4dba-4d44-865e-8f1d0e4fd04d")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+unsafe interface IMemoryBufferByteAccess
+{
+    void GetBuffer(out byte* buffer, out uint capacity);
+}
 
 namespace HoloLensCameraStream
 {
@@ -142,10 +151,50 @@ namespace HoloLensCameraStream
             isBitmapCopied = true;
         }
 
-
-        public void CopyRawImageDataIntoBuffer(List<byte> byteBuffer)
+        /// <summary>
+        /// If you need safe, long term control over the image bytes in this frame, they will need to be
+        /// copied. You need to supply a byte[] to copy them into. It is best to pre-allocate and reuse
+        /// this byte array to minimize unecessarily high memory ceiling or unnecessary garbage collections.
+        /// </summary>
+        /// <param name="byteBuffer">A byte array with a length the size of VideoCaptureSample.dataLength</param>
+        public unsafe void BlockCopyRawImageDataIntoBuffer(byte[] byteBuffer, int offset)
         {
-            throw new NotSupportedException("This method is not yet supported with a List<byte>. Please provide a byte[] instead.");
+            //Here is a potential way to get direct access to the buffer:
+            //http://stackoverflow.com/questions/25481840/how-to-change-mediacapture-to-byte
+
+            if (byteBuffer == null)
+            {
+                throw new ArgumentNullException("byteBuffer");
+            }
+
+            if (offset < 0)
+            {
+                throw new System.ArgumentException();
+            }
+
+            if (byteBuffer.Length - offset < dataLength)
+            {
+                throw new IndexOutOfRangeException("Your byteBuffer is not big enough." +
+                    " Please use the VideoCaptureSample.dataLength property to allocate a large enough array.");
+            }
+
+            using (var buffer = bitmap.LockBuffer(BitmapBufferAccessMode.Read))
+            using (var reference = buffer.CreateReference())
+            {
+                // Get a pointer to the pixel buffer
+                byte* data;
+                uint capacity;
+                ((IMemoryBufferByteAccess)reference).GetBuffer(out data, out capacity);
+                fixed (byte* pTarget = byteBuffer)
+                {
+                    // Copy the specified number of bytes from source to target.
+                    for (int i = 0; i < dataLength; i++)
+                    {
+                        pTarget[offset + i] = data[i];
+                    }
+                }
+            }
+            isBitmapCopied = true;
         }
 
         /// <summary>

@@ -20,8 +20,8 @@ namespace HoloLensCameraStream
         {
             throw new NotImplementedException();
         }
-        
-        public void CopyRawImageDataIntoBuffer(List<byte> byteBuffer)
+
+        public void BlockCopyRawImageDataIntoBuffer(byte[] byteBuffer, int offset)
         {
             throw new NotImplementedException();
         }
