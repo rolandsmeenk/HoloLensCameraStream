@@ -275,6 +275,7 @@ namespace HoloLensCameraStream
 
             byte[] rawIntrinsics = frameReference.Properties[cameraIntrinsicsGuid] as byte[];
             intrinsics = ConvertByteArrayToCameraIntrinsics(rawIntrinsics);
+            return true;
         }
 
         /// <summary>
@@ -355,15 +356,15 @@ namespace HoloLensCameraStream
             var intrinsics = new CameraIntrinsics();
             intrinsics.Width = BitConverter.ToInt32(array, 4);
             intrinsics.Height = BitConverter.ToInt32(array, 8);
-            intrinsics.Fx = BitConverter.Single(array, 12);
-            intrinsics.Fy = BitConverter.Single(array, 16);
-            intrinsics.Cx = BitConverter.Single(array, 20);
-            intrinsics.Cy = BitConverter.Single(array, 24);
-            intrinsics.K1 = BitConverter.Single(array, 28);
-            intrinsics.K2 = BitConverter.Single(array, 32);
-            intrinsics.K3 = BitConverter.Single(array, 36);
-            intrinsics.P1 = BitConverter.Single(array, 40);
-            intrinsics.P2 = BitConverter.Single(array, 44);
+            intrinsics.Fx = BitConverter.ToSingle(array, 12);
+            intrinsics.Fy = BitConverter.ToSingle(array, 16);
+            intrinsics.Cx = BitConverter.ToSingle(array, 20);
+            intrinsics.Cy = BitConverter.ToSingle(array, 24);
+            intrinsics.K1 = BitConverter.ToSingle(array, 28);
+            intrinsics.K2 = BitConverter.ToSingle(array, 32);
+            intrinsics.K3 = BitConverter.ToSingle(array, 36);
+            intrinsics.P1 = BitConverter.ToSingle(array, 40);
+            intrinsics.P2 = BitConverter.ToSingle(array, 44);
             return intrinsics;
         }
 
